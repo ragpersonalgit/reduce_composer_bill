@@ -1,0 +1,49 @@
+steps:
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Save snapshot'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        snap_folder=$(gsutil ls gs://${project_id}-europe-west1-backup/snapshots) || snap_folder=empty
+        gcloud composer environments snapshots save ${env_name} \
+          --location europe-west1 --project ${project_id} \
+          --snapshot-location gs://${project_id}-europe-west1-backup/snapshots
+        if [[ $snap_folder != empty ]]
+        then
+          gsutil -m rm -r $snap_folder
+        fi
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Save Tasks Logs'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        dags_folder=$(gcloud composer environments describe ${env_name} --project ${project_id} \
+              --location europe-west1 --format="get(config.dagGcsPrefix)")
+        logs_folder=$(echo $dags_folder | cut -d / -f-3)/logs
+        gsutil -m cp -r ${logs_folder}/* gs://${project_id}-europe-west1-backup/tasks-logs/
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Delete Composer Environment'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        dags_folder=$(gcloud composer environments describe ${env_name} --project ${project_id} \
+              --location europe-west1 --format="get(config.dagGcsPrefix)")
+        gcloud composer environments delete --project ${project_id} --quiet \
+          ${env_name} --location europe-west1
+        dags_bucket=$(echo $dags_folder | cut -d / -f-3)
+        gsutil -m rm -r $dags_bucket

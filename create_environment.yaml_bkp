@@ -1,0 +1,52 @@
+steps:
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Create environment'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        gcloud composer environments create ${env_name} --location europe-west1 \
+          --project ${project_id} --image-version=composer-2.1.10-airflow-2.4.3 \
+          --service-account sac-cmp@${project_id}.iam.gserviceaccount.com
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Load Snapshot'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        if gsutil ls gs://${project_id}-europe-west1-backup/snapshots/* ; then
+          snap_folder=$(gsutil ls gs://${project_id}-europe-west1-backup/snapshots)
+          gcloud composer environments snapshots load ${env_name} --project ${project_id} \
+            --location europe-west1 \
+            --snapshot-path ${snap_folder}
+        else
+          echo "There is no snapshot to load"
+        fi
+        
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Restore Tasks Logs'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        if gsutil ls gs://${project_id}-europe-west1-backup/tasks-logs/* ; then
+          dags_folder=$(gcloud composer environments describe ${env_name} --project ${project_id} \
+            --location europe-west1 --format="get(config.dagGcsPrefix)")
+          logs_folder=$(echo $dags_folder | cut -d / -f-3)/logs
+          gsutil -m cp -r gs://${project_id}-europe-west1-backup/tasks-logs/* ${logs_folder}/
+        else
+          echo "There is no task logs to restore"
+        fi
+

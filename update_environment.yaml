@@ -1,0 +1,13 @@
+steps:
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    id: 'Add environment variables'
+    args:
+      - -c
+      - |
+        set -e
+        project_id=reduce-composer-bill
+        env_name=my-basic-environment
+        gcloud composer environments update save ${env_name} --location europe-west1 \
+          --project ${project_id} --update-env-variables ENV=dev
