@@ -9,4 +9,4 @@ steps:
         set -e
         project_id=handy-cell-393914
         env_name=my-basic-environment
-        gcloud composer environments create ${env_name} --location europe-west1 --project ${project_id} --image-version=composer-2.3.4-airflow-2.5.1 --service-account 948958185539-compute@developer.gserviceaccount.com
+        gcloud composer environments create ${env_name} --location us-central1 --project ${project_id} --image-version=composer-2.3.4-airflow-2.5.1 --service-account 948958185539-compute@developer.gserviceaccount.com
